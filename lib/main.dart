@@ -51,7 +51,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: ZenColors.text),
         ),
       ),
-      initialRoute: 'register',
+      initialRoute: 'login',
       routes: {
         'login': (context) => const LoginScreen(),
         'register': (context) => const RegisterScreen(),
