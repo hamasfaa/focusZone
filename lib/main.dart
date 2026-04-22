@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mini_project/screens/home.dart';
 import 'package:mini_project/screens/login.dart';
 import 'package:mini_project/screens/register.dart';
+import 'package:mini_project/screens/timer.dart';
 import 'package:mini_project/theme/zen_colors.dart';
 
 void main() async {
@@ -56,6 +57,7 @@ class MyApp extends StatelessWidget {
         'login': (context) => const LoginScreen(),
         'register': (context) => const RegisterScreen(),
         'home': (context) => const HomeScreen(),
+        'timer': (context) => const TimerScreen(),
       },
     );
   }

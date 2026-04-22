@@ -12,8 +12,67 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final FireStoreService _fireStoreService = FireStoreService();
+  bool _isCheckingRunningActivity = true;
+  bool _isRedirectingToTimer = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _redirectToTimerIfNeeded();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _redirectToTimerIfNeeded();
+    }
+  }
+
+  Future<void> _redirectToTimerIfNeeded() async {
+    if (_isRedirectingToTimer) return;
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      if (!mounted) return;
+      setState(() {
+        _isCheckingRunningActivity = false;
+      });
+      Navigator.pushReplacementNamed(context, 'login');
+      return;
+    }
+
+    try {
+      final runningActivity = await _fireStoreService.getRunningActivityForUser(
+        currentUser.uid,
+      );
+      if (!mounted) return;
+
+      if (runningActivity != null) {
+        _isRedirectingToTimer = true;
+        Navigator.pushReplacementNamed(context, 'timer');
+        return;
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal memeriksa aktivitas running.')),
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isCheckingRunningActivity = false;
+    });
+  }
 
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
@@ -36,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
       description: description,
       durationInSeconds: durationInSeconds,
       userId: currentUser.uid,
-      status: FireStoreService.activityStatusCompleted,
+      status: FireStoreService.activityStatusRunning,
     );
   }
 
@@ -49,10 +108,34 @@ class _HomeScreenState extends State<HomeScreen> {
         return CreateActivityFormSheet(onSubmit: _saveActivity);
       },
     );
+
+    if (!mounted) return;
+    await _redirectToTimerIfNeeded();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isCheckingRunningActivity) {
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                ZenColors.background,
+                Color(0xFFF2EFE8),
+                ZenColors.accent,
+              ],
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(color: ZenColors.primary),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('FocusZone'),
