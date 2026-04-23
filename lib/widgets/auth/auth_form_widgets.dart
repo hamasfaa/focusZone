@@ -63,3 +63,124 @@ class AuthSwitchText extends StatelessWidget {
     );
   }
 }
+
+class AuthPageScaffold extends StatelessWidget {
+  const AuthPageScaffold({
+    super.key,
+    required this.middleGradientColor,
+    required this.child,
+  });
+
+  final Color middleGradientColor;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              ZenColors.background,
+              middleGradientColor,
+              ZenColors.accent,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 28,
+                  ),
+                  child: IntrinsicHeight(child: child),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AuthBrandHeader extends StatelessWidget {
+  const AuthBrandHeader({
+    super.key,
+    this.title = 'FocusZone',
+    this.fontSize = 32,
+    this.letterSpacing = 0.6,
+    this.textAlign = TextAlign.start,
+  });
+
+  final String title;
+  final double fontSize;
+  final double letterSpacing;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Icon(
+            Icons.spa_rounded,
+            size: 42,
+            color: ZenColors.secondary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            color: ZenColors.text,
+            letterSpacing: letterSpacing,
+          ),
+          textAlign: textAlign,
+        ),
+      ],
+    );
+  }
+}
+
+class AuthCardContainer extends StatelessWidget {
+  const AuthCardContainer({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: ZenColors.accent, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: ZenColors.text.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}

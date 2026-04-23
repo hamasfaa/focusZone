@@ -1,5 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mini_project/controllers/home_session_controller.dart';
 import 'package:mini_project/services/firestore.dart';
 import 'package:mini_project/theme/zen_colors.dart';
 import 'package:mini_project/widgets/home/create_activity_form_sheet.dart';
@@ -13,9 +13,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  final FireStoreService _fireStoreService = FireStoreService();
-  bool _isCheckingRunningActivity = true;
-  bool _isRedirectingToTimer = false;
+  late final HomeSessionController _homeController;
 
   Widget _buildLoadingScaffold() {
     return Scaffold(
@@ -37,14 +35,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _homeController = HomeSessionController(
+      fireStoreService: FireStoreService(),
+    );
+    _homeController.addListener(_onHomeControllerChanged);
     WidgetsBinding.instance.addObserver(this);
     _redirectToTimerIfNeeded();
   }
 
   @override
   void dispose() {
+    _homeController.removeListener(_onHomeControllerChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onHomeControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -55,44 +63,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _redirectToTimerIfNeeded() async {
-    if (_isRedirectingToTimer) return;
-
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      if (!mounted) return;
-      setState(() {
-        _isCheckingRunningActivity = false;
-      });
-      Navigator.pushReplacementNamed(context, 'login');
-      return;
-    }
-
-    try {
-      final runningActivity = await _fireStoreService.getRunningActivityForUser(
-        currentUser.uid,
-      );
-      if (!mounted) return;
-
-      if (runningActivity != null) {
-        _isRedirectingToTimer = true;
-        Navigator.pushReplacementNamed(context, 'timer');
-        return;
-      }
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal memeriksa aktivitas running.')),
-      );
-    }
-
+    final checkResult = await _homeController.checkRouteOnHomeEntry();
     if (!mounted) return;
-    setState(() {
-      _isCheckingRunningActivity = false;
-    });
+
+    if (checkResult.errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(checkResult.errorMessage!)));
+    }
+
+    if (checkResult.shouldRedirect) {
+      Navigator.pushReplacementNamed(context, checkResult.redirectRoute!);
+    }
   }
 
   Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
+    await _homeController.logout();
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, 'login');
   }
@@ -102,17 +88,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     String description,
     int durationInSeconds,
   ) async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      throw Exception('Sesi login tidak ditemukan.');
-    }
-
-    await _fireStoreService.addActivity(
+    await _homeController.saveRunningActivity(
       name: name,
       description: description,
       durationInSeconds: durationInSeconds,
-      userId: currentUser.uid,
-      status: FireStoreService.activityStatusRunning,
     );
   }
 
@@ -132,12 +111,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (_isCheckingRunningActivity) {
+    if (_homeController.isCheckingRunningActivity) {
       return _buildLoadingScaffold();
     }
 
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
+    final currentUserId = _homeController.currentUserId;
+    if (currentUserId == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, 'login');
@@ -181,8 +160,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 const SizedBox(height: 18),
                 Expanded(
                   child: HomeActivityHistoryList(
-                    userId: currentUser.uid,
-                    fireStoreService: _fireStoreService,
+                    userId: currentUserId,
+                    fireStoreService: _homeController.fireStoreService,
                   ),
                 ),
               ],
