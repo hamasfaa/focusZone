@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mini_project/services/firestore.dart';
 import 'package:mini_project/theme/zen_colors.dart';
 import 'package:mini_project/widgets/home/create_activity_form_sheet.dart';
-import 'package:mini_project/widgets/home/home_history_placeholder_card.dart';
+import 'package:mini_project/widgets/home/home_activity_history_list.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +16,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final FireStoreService _fireStoreService = FireStoreService();
   bool _isCheckingRunningActivity = true;
   bool _isRedirectingToTimer = false;
+
+  Widget _buildLoadingScaffold() {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [ZenColors.background, Color(0xFFF2EFE8), ZenColors.accent],
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: ZenColors.primary),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -116,24 +133,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     if (_isCheckingRunningActivity) {
-      return Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                ZenColors.background,
-                Color(0xFFF2EFE8),
-                ZenColors.accent,
-              ],
-            ),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(color: ZenColors.primary),
-          ),
-        ),
-      );
+      return _buildLoadingScaffold();
+    }
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, 'login');
+      });
+      return _buildLoadingScaffold();
     }
 
     return Scaffold(
@@ -155,13 +164,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             colors: [ZenColors.background, Color(0xFFF2EFE8), ZenColors.accent],
           ),
         ),
-        child: const SafeArea(
+        child: SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 18, 20, 90),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 90),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
+                const Text(
                   'Riwayat Aktivitas',
                   style: TextStyle(
                     fontSize: 24,
@@ -169,8 +178,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     color: ZenColors.text,
                   ),
                 ),
-                SizedBox(height: 18),
-                Expanded(child: HomeHistoryPlaceholderCard()),
+                const SizedBox(height: 18),
+                Expanded(
+                  child: HomeActivityHistoryList(
+                    userId: currentUser.uid,
+                    fireStoreService: _fireStoreService,
+                  ),
+                ),
               ],
             ),
           ),

@@ -7,6 +7,26 @@ class FireStoreService {
   final CollectionReference<Map<String, dynamic>> _activitiesCollection =
       FirebaseFirestore.instance.collection('activities');
 
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  streamActivitiesForUser(String userId) {
+    return _activitiesCollection
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+          final docs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(
+            snapshot.docs,
+          );
+
+          docs.sort((a, b) {
+            final aDate = _resolveSortDate(a.data());
+            final bDate = _resolveSortDate(b.data());
+            return bDate.compareTo(aDate);
+          });
+
+          return docs;
+        });
+  }
+
   Future<QueryDocumentSnapshot<Map<String, dynamic>>?>
   getRunningActivityForUser(String userId) async {
     final snapshot = await _activitiesCollection
@@ -22,9 +42,32 @@ class FireStoreService {
     return snapshot.docs.first;
   }
 
+  DateTime _resolveSortDate(Map<String, dynamic> data) {
+    final completedAt = data['completedAt'];
+    if (completedAt is Timestamp) {
+      return completedAt.toDate();
+    }
+
+    final createdAt = data['createdAt'];
+    if (createdAt is Timestamp) {
+      return createdAt.toDate();
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
   Future<bool> hasRunningActivity(String userId) async {
     final runningActivity = await getRunningActivityForUser(userId);
     return runningActivity != null;
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamCompletedActivitiesForUser(
+    String userId,
+  ) {
+    return _activitiesCollection
+        .where('userId', isEqualTo: userId)
+        .where('status', isEqualTo: activityStatusCompleted)
+        .snapshots();
   }
 
   Future<void> addActivity({
