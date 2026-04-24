@@ -108,4 +108,22 @@ class FireStoreService {
         'completedAt': FieldValue.serverTimestamp(),
     });
   }
+
+  Future<void> addNoteToActivity({
+    required String activityId,
+    required String noteText,
+    required List<String> imageUrls,
+  }) async {
+    final Map<String, dynamic> updateData = {};
+    if (noteText.isNotEmpty) {
+      updateData['noteText'] = noteText;
+    }
+    if (imageUrls.isNotEmpty) {
+      updateData['noteImageUrls'] = imageUrls;
+    }
+
+    if (updateData.isNotEmpty) {
+      await _activitiesCollection.doc(activityId).update(updateData);
+    }
+  }
 }

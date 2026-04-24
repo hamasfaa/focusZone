@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mini_project/controllers/timer_session_controller.dart';
 import 'package:mini_project/services/firestore.dart';
+import 'package:mini_project/screens/note_upload.dart';
 import 'package:mini_project/theme/zen_colors.dart';
 import 'package:mini_project/widgets/timer/timer_activity_card.dart';
 
@@ -75,8 +76,17 @@ class _TimerScreenState extends State<TimerScreen> {
     if (!mounted) return;
 
     _showSnackBar(finishResult.message);
-    if (finishResult.success) {
-      Navigator.pushReplacementNamed(context, 'home');
+    if (finishResult.success && _controller.activityId != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NoteUploadScreen(
+            activityId: _controller.activityId!,
+          ),
+        ),
+      );
+    } else if (finishResult.success) {
+       Navigator.pushReplacementNamed(context, 'home');
     }
   }
 

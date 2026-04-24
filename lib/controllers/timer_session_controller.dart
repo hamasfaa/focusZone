@@ -54,6 +54,7 @@ class TimerSessionController extends ChangeNotifier {
   bool get isFinishing => _isFinishing;
   bool get isPaused => _isPaused;
 
+  String? get activityId => _activityId;
   String get activityName => _activityName;
   String get activityDescription => _activityDescription;
   int get totalSeconds => _totalSeconds;

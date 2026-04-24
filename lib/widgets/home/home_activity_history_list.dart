@@ -115,6 +115,9 @@ class _HistoryActivityCard extends StatelessWidget {
     final description = (data['description'] ?? '').toString();
     final durationText = _formatDuration(_resolveDurationInSeconds(data));
     final timeText = _formatTime(data);
+    
+    final noteText = (data['noteText'] ?? '').toString();
+    final List<String> noteImageUrls = List<String>.from(data['noteImageUrls'] ?? []);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -198,6 +201,51 @@ class _HistoryActivityCard extends StatelessWidget {
               ),
             ],
           ),
+          if (noteText.isNotEmpty || noteImageUrls.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(color: ZenColors.accent),
+            ),
+            if (noteText.isNotEmpty)
+              Text(
+                noteText,
+                style: const TextStyle(
+                  color: ZenColors.text,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 13,
+                ),
+              ),
+            if (noteImageUrls.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 48,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: noteImageUrls.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        noteImageUrls[index],
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                           return Container(
+                             width: 48,
+                             height: 48,
+                             color: ZenColors.accent,
+                             child: const Icon(Icons.broken_image, size: 20),
+                           );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );
