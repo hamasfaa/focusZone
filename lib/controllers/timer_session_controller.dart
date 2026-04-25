@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:light/light.dart';
 import 'package:mini_project/services/firestore.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
@@ -30,14 +32,17 @@ class TimerSessionController extends ChangeNotifier {
 
   static const double _gyroMovementThreshold = 1;
   static const Duration _gyroTriggerCooldown = Duration(milliseconds: 1200);
+  static const int _lightDarkThreshold = 5;
 
   final FireStoreService _fireStoreService;
 
   Timer? _ticker;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
-  DateTime? _lastGyroTriggerAt;
+  StreamSubscription<int>? _lightSubscription;
+  Light? _lightSensor;
+  DateTime? _lastTriggerAt;
 
-  VoidCallback? _onAutoPaused;
+  void Function(String reason)? _onAutoPaused;
   VoidCallback? _onTimerElapsed;
 
   bool _isLoading = true;
@@ -89,7 +94,7 @@ class TimerSessionController extends ChangeNotifier {
 
   Future<TimerInitResult> initialize({
     required String? userId,
-    VoidCallback? onAutoPaused,
+    void Function(String reason)? onAutoPaused,
     VoidCallback? onTimerElapsed,
   }) async {
     _onAutoPaused = onAutoPaused;
@@ -124,6 +129,7 @@ class TimerSessionController extends ChangeNotifier {
       notifyListeners();
 
       _startGyroscopeMonitor();
+      _startLightMonitor();
       _startTicker();
 
       return TimerInitResult.ready;
@@ -145,6 +151,19 @@ class TimerSessionController extends ChangeNotifier {
     );
   }
 
+  void _startLightMonitor() {
+    _lightSubscription?.cancel();
+    _lightSensor = Light();
+    try {
+      _lightSubscription = _lightSensor?.lightSensorStream.listen(
+        _handleLightEvent,
+        onError: (_) {},
+      );
+    } catch (e) {
+      debugPrint('Sensor cahaya tidak tersedia: $e');
+    }
+  }
+
   void _handleGyroscopeEvent(GyroscopeEvent event) {
     if (_isLoading || _isFinishing || _isPaused || _remainingSeconds <= 0) {
       return;
@@ -158,16 +177,52 @@ class TimerSessionController extends ChangeNotifier {
       return;
     }
 
-    final now = DateTime.now();
-    if (_lastGyroTriggerAt != null &&
-        now.difference(_lastGyroTriggerAt!) < _gyroTriggerCooldown) {
+    _triggerAutoPause('Gerakan terdeteksi. Timer dipause otomatis.');
+
+    AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 11,
+        channelKey: 'timer_channel',
+        actionType: ActionType.Default,
+        title: 'Gerakan Terdeteksi!',
+        body: 'Fokus! HP Anda bergerak, timer di-pause otomatis.',
+      ),
+    );
+  }
+
+  void _handleLightEvent(int luxValue) {
+    if (_isLoading || _isFinishing || _isPaused || _remainingSeconds <= 0) {
       return;
     }
-    _lastGyroTriggerAt = now;
+
+    if (luxValue > _lightDarkThreshold) {
+      return;
+    }
+
+    _triggerAutoPause('Kondisi ruangan gelap. Timer dipause otomatis.');
+
+    AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 10,
+        channelKey: 'timer_channel',
+        actionType: ActionType.Default,
+        title: 'Cahaya Terlalu Redup!',
+        body: 'Belajarlah dengan lampu yang cukup. Timer dipause otomatis.',
+      ),
+    );
+  }
+
+  void _triggerAutoPause(String reason) {
+    final now = DateTime.now();
+    if (_lastTriggerAt != null &&
+        now.difference(_lastTriggerAt!) < _gyroTriggerCooldown) {
+      return;
+    }
+    _lastTriggerAt = now;
 
     pauseTimer();
     HapticFeedback.heavyImpact();
-    _onAutoPaused?.call();
+    _onAutoPaused?.call(reason);
   }
 
   int _resolveDurationInSeconds(Map<String, dynamic> data) {
@@ -287,6 +342,7 @@ class TimerSessionController extends ChangeNotifier {
   void dispose() {
     _ticker?.cancel();
     _gyroscopeSubscription?.cancel();
+    _lightSubscription?.cancel();
     super.dispose();
   }
 }

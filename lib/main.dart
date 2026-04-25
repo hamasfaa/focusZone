@@ -1,3 +1,4 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:mini_project/screens/home.dart';
@@ -9,6 +10,28 @@ import 'package:mini_project/theme/zen_colors.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  AwesomeNotifications().initialize(
+    null,
+    [
+      NotificationChannel(
+        channelGroupKey: 'timer_channel_group',
+        channelKey: 'timer_channel',
+        channelName: 'Timer Notifications',
+        channelDescription: 'Notification channel for timer alerts',
+        defaultColor: ZenColors.primary,
+        ledColor: Colors.white,
+      )
+    ],
+    channelGroups: [
+      NotificationChannelGroup(
+        channelGroupKey: 'timer_channel_group',
+        channelGroupName: 'Timer group',
+      )
+    ],
+    debug: true,
+  );
+
   runApp(const MyApp());
 }
 

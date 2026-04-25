@@ -1,3 +1,4 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mini_project/controllers/timer_session_controller.dart';
@@ -23,6 +24,12 @@ class _TimerScreenState extends State<TimerScreen> {
     super.initState();
     _controller.addListener(_onControllerChanged);
     _initializeTimerSession();
+    
+    AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
+      if (!isAllowed) {
+        AwesomeNotifications().requestPermissionToSendNotifications();
+      }
+    });
   }
 
   @override
@@ -40,7 +47,7 @@ class _TimerScreenState extends State<TimerScreen> {
   Future<void> _initializeTimerSession() async {
     final initResult = await _controller.initialize(
       userId: FirebaseAuth.instance.currentUser?.uid,
-      onAutoPaused: _showGyroPausedMessage,
+      onAutoPaused: _showAutoPausedMessage,
       onTimerElapsed: _handleTimerElapsed,
     );
 
@@ -55,9 +62,9 @@ class _TimerScreenState extends State<TimerScreen> {
     }
   }
 
-  void _showGyroPausedMessage() {
+  void _showAutoPausedMessage(String reason) {
     if (!mounted) return;
-    _showSnackBar('Gerakan terdeteksi. Timer dipause otomatis.');
+    _showSnackBar(reason);
   }
 
   void _showSnackBar(String message) {
