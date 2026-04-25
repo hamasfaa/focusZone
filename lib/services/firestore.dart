@@ -126,4 +126,8 @@ class FireStoreService {
       await _activitiesCollection.doc(activityId).update(updateData);
     }
   }
+
+  Future<void> deleteActivity(String activityId) async {
+    await _activitiesCollection.doc(activityId).delete();
+  }
 }

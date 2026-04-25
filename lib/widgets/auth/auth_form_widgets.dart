@@ -115,7 +115,7 @@ class AuthPageScaffold extends StatelessWidget {
 class AuthBrandHeader extends StatelessWidget {
   const AuthBrandHeader({
     super.key,
-    this.title = 'FocusZone',
+    this.title = 'StudyFocus',
     this.fontSize = 32,
     this.letterSpacing = 0.6,
     this.textAlign = TextAlign.start,

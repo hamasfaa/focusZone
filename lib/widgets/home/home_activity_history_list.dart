@@ -47,8 +47,11 @@ class HomeActivityHistoryList extends StatelessWidget {
           itemCount: docs.length,
           separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
-            final activityData = docs[index].data();
-            return _HistoryActivityCard(data: activityData);
+            final doc = docs[index];
+            return _HistoryActivityCard(
+              activityId: doc.id,
+              data: doc.data(),
+            );
           },
         );
       },
@@ -57,8 +60,12 @@ class HomeActivityHistoryList extends StatelessWidget {
 }
 
 class _HistoryActivityCard extends StatelessWidget {
-  const _HistoryActivityCard({required this.data});
+  const _HistoryActivityCard({
+    required this.activityId,
+    required this.data,
+  });
 
+  final String activityId;
   final Map<String, dynamic> data;
 
   String _formatDuration(int seconds) {
@@ -112,6 +119,7 @@ class _HistoryActivityCard extends StatelessWidget {
 
   void _showDetail(
     BuildContext context,
+    String activityId,
     String title,
     String description,
     String durationText,
@@ -124,6 +132,7 @@ class _HistoryActivityCard extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ActivityDetailSheet(
+        activityId: activityId,
         title: title,
         description: description,
         durationText: durationText,
@@ -150,6 +159,7 @@ class _HistoryActivityCard extends StatelessWidget {
       child: InkWell(
         onTap: () => _showDetail(
           context,
+          activityId,
           title,
           description,
           durationText,

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:mini_project/services/firestore.dart';
+import 'package:mini_project/services/storage_service.dart';
 import 'package:mini_project/theme/zen_colors.dart';
 
 class ActivityDetailSheet extends StatelessWidget {
   const ActivityDetailSheet({
     super.key,
+    required this.activityId,
     required this.title,
     required this.description,
     required this.durationText,
@@ -12,6 +15,7 @@ class ActivityDetailSheet extends StatelessWidget {
     required this.noteImageUrls,
   });
 
+  final String activityId;
   final String title;
   final String description;
   final String durationText;
@@ -59,6 +63,50 @@ class ActivityDetailSheet extends StatelessWidget {
     );
   }
 
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Hapus Aktivitas?'),
+          content: const Text('Aktivitas ini beserta semua foto lampirannya akan dihapus permanen.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext); // close dialog
+                
+                try {
+                  if (noteImageUrls.isNotEmpty) {
+                    await StorageService().deleteActivityImages(noteImageUrls);
+                  }
+                  await FireStoreService().deleteActivity(activityId);
+                  
+                  if (context.mounted) {
+                    Navigator.pop(context); // close sheet
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Aktivitas berhasil dihapus')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Gagal menghapus: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -88,13 +136,24 @@ class ActivityDetailSheet extends StatelessWidget {
                   controller: controller,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: ZenColors.text,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: ZenColors.text,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                          onPressed: () => _confirmDelete(context),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Row(

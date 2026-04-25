@@ -24,7 +24,7 @@ class _TimerScreenState extends State<TimerScreen> {
     super.initState();
     _controller.addListener(_onControllerChanged);
     _initializeTimerSession();
-    
+
     AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
       if (!isAllowed) {
         AwesomeNotifications().requestPermissionToSendNotifications();
@@ -87,13 +87,12 @@ class _TimerScreenState extends State<TimerScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => NoteUploadScreen(
-            activityId: _controller.activityId!,
-          ),
+          builder: (context) =>
+              NoteUploadScreen(activityId: _controller.activityId!),
         ),
       );
     } else if (finishResult.success) {
-       Navigator.pushReplacementNamed(context, 'home');
+      Navigator.pushReplacementNamed(context, 'home');
     }
   }
 
@@ -120,7 +119,7 @@ class _TimerScreenState extends State<TimerScreen> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text('Timer Fokus'),
+          title: const Text('StudyFocus'),
         ),
         body: Container(
           decoration: const BoxDecoration(

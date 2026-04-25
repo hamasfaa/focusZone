@@ -40,4 +40,15 @@ class StorageService {
 
     return downloadUrls;
   }
+
+  Future<void> deleteActivityImages(List<String> imageUrls) async {
+    for (final url in imageUrls) {
+      try {
+        final Reference ref = _storage.refFromURL(url);
+        await ref.delete();
+      } catch (e) {
+        print('Error deleting image $url: $e');
+      }
+    }
+  }
 }
