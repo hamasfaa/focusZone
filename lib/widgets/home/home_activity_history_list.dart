@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mini_project/services/firestore.dart';
 import 'package:mini_project/theme/zen_colors.dart';
+import 'package:mini_project/widgets/home/activity_detail_sheet.dart';
 import 'package:mini_project/widgets/home/home_history_placeholder_card.dart';
 
 class HomeActivityHistoryList extends StatelessWidget {
@@ -109,6 +110,30 @@ class _HistoryActivityCard extends StatelessWidget {
     return '${twoDigits(date.day)}/${twoDigits(date.month)}/${date.year} ${twoDigits(date.hour)}:${twoDigits(date.minute)}';
   }
 
+  void _showDetail(
+    BuildContext context,
+    String title,
+    String description,
+    String durationText,
+    String timeText,
+    String noteText,
+    List<String> noteImageUrls,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ActivityDetailSheet(
+        title: title,
+        description: description,
+        durationText: durationText,
+        timeText: timeText,
+        noteText: noteText,
+        noteImageUrls: noteImageUrls,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = (data['name'] ?? 'Tanpa Judul').toString();
@@ -118,135 +143,121 @@ class _HistoryActivityCard extends StatelessWidget {
     
     final noteText = (data['noteText'] ?? '').toString();
     final List<String> noteImageUrls = List<String>.from(data['noteImageUrls'] ?? []);
+    final hasNoteOrImage = noteText.isNotEmpty || noteImageUrls.isNotEmpty;
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.84),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showDetail(
+          context,
+          title,
+          description,
+          durationText,
+          timeText,
+          noteText,
+          noteImageUrls,
+        ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ZenColors.accent, width: 1.1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: ZenColors.text,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: ZenColors.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: const Text(
-                  'SELESAI',
-                  style: TextStyle(
-                    color: ZenColors.primary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.84),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: ZenColors.accent, width: 1.1),
           ),
-          if (description.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              description,
-              style: TextStyle(color: ZenColors.text.withValues(alpha: 0.75)),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 10),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.timer_outlined,
-                size: 16,
-                color: ZenColors.secondary.withValues(alpha: 0.9),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                durationText,
-                style: const TextStyle(
-                  color: ZenColors.text,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Icon(
-                Icons.schedule_rounded,
-                size: 16,
-                color: ZenColors.secondary.withValues(alpha: 0.9),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  timeText,
-                  style: TextStyle(
-                    color: ZenColors.text.withValues(alpha: 0.75),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: ZenColors.text,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
+                  if (hasNoteOrImage) ...[
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: ZenColors.secondary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        noteImageUrls.isNotEmpty ? Icons.image_rounded : Icons.notes_rounded,
+                        size: 14,
+                        color: ZenColors.secondary,
+                      ),
+                    ),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: ZenColors.primary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: const Text(
+                      'SELESAI',
+                      style: TextStyle(
+                        color: ZenColors.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (description.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: TextStyle(color: ZenColors.text.withValues(alpha: 0.75)),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+              ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(
+                    Icons.timer_outlined,
+                    size: 16,
+                    color: ZenColors.secondary.withValues(alpha: 0.9),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    durationText,
+                    style: const TextStyle(
+                      color: ZenColors.text,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 16,
+                    color: ZenColors.secondary.withValues(alpha: 0.9),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      timeText,
+                      style: TextStyle(
+                        color: ZenColors.text.withValues(alpha: 0.75),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          if (noteText.isNotEmpty || noteImageUrls.isNotEmpty) ...[
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Divider(color: ZenColors.accent),
-            ),
-            if (noteText.isNotEmpty)
-              Text(
-                noteText,
-                style: const TextStyle(
-                  color: ZenColors.text,
-                  fontStyle: FontStyle.italic,
-                  fontSize: 13,
-                ),
-              ),
-            if (noteImageUrls.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 48,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: noteImageUrls.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        noteImageUrls[index],
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                           return Container(
-                             width: 48,
-                             height: 48,
-                             color: ZenColors.accent,
-                             child: const Icon(Icons.broken_image, size: 20),
-                           );
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ],
-        ],
+        ),
       ),
     );
   }
