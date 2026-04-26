@@ -62,7 +62,9 @@ class _NoteUploadScreenState extends State<NoteUploadScreen> {
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _saveNote() async {
@@ -116,7 +118,7 @@ class _NoteUploadScreenState extends State<NoteUploadScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Tambahkan Catatan'),
+        title: Image.asset('images/logo.png', height: 40, fit: BoxFit.contain),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -167,11 +169,15 @@ class _NoteUploadScreenState extends State<NoteUploadScreen> {
                           fillColor: Colors.white.withValues(alpha: 0.8),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: ZenColors.accent),
+                            borderSide: const BorderSide(
+                              color: ZenColors.accent,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: ZenColors.accent),
+                            borderSide: const BorderSide(
+                              color: ZenColors.accent,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -200,7 +206,9 @@ class _NoteUploadScreenState extends State<NoteUploadScreen> {
                               icon: const Icon(Icons.camera_alt),
                               label: const Text('Kamera'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: ZenColors.primary.withValues(alpha: 0.1),
+                                backgroundColor: ZenColors.primary.withValues(
+                                  alpha: 0.1,
+                                ),
                                 foregroundColor: ZenColors.primary,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
@@ -216,7 +224,9 @@ class _NoteUploadScreenState extends State<NoteUploadScreen> {
                               icon: const Icon(Icons.photo_library),
                               label: const Text('Galeri'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: ZenColors.secondary.withValues(alpha: 0.1),
+                                backgroundColor: ZenColors.secondary.withValues(
+                                  alpha: 0.1,
+                                ),
                                 foregroundColor: ZenColors.secondary,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
@@ -292,7 +302,9 @@ class _NoteUploadScreenState extends State<NoteUploadScreen> {
                       TextButton(
                         onPressed: _skip,
                         style: TextButton.styleFrom(
-                          foregroundColor: ZenColors.text.withValues(alpha: 0.6),
+                          foregroundColor: ZenColors.text.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                         child: const Text('Lewati'),
                       ),

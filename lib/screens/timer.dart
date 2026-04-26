@@ -119,7 +119,11 @@ class _TimerScreenState extends State<TimerScreen> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text('StudyFocus'),
+          title: Image.asset(
+            'images/logo.png',
+            height: 40,
+            fit: BoxFit.contain,
+          ),
         ),
         body: Container(
           decoration: const BoxDecoration(

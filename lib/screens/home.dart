@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('StudyFocus'),
+        title: Image.asset('images/logo.png', height: 40, fit: BoxFit.contain),
         actions: [
           IconButton(
             onPressed: _logout,

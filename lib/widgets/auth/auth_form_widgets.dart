@@ -115,13 +115,11 @@ class AuthPageScaffold extends StatelessWidget {
 class AuthBrandHeader extends StatelessWidget {
   const AuthBrandHeader({
     super.key,
-    this.title = 'StudyFocus',
     this.fontSize = 32,
     this.letterSpacing = 0.6,
     this.textAlign = TextAlign.start,
   });
 
-  final String title;
   final double fontSize;
   final double letterSpacing;
   final TextAlign textAlign;
@@ -137,23 +135,14 @@ class AuthBrandHeader extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(18),
           ),
-          child: const Icon(
-            Icons.spa_rounded,
-            size: 42,
-            color: ZenColors.secondary,
+          child: Image.asset(
+            'images/logo.png',
+            height: 42,
+            width: 42,
+            fit: BoxFit.contain,
           ),
         ),
         const SizedBox(height: 16),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w800,
-            color: ZenColors.text,
-            letterSpacing: letterSpacing,
-          ),
-          textAlign: textAlign,
-        ),
       ],
     );
   }
