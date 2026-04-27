@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:mini_project/services/firestore.dart';
 import 'package:mini_project/theme/zen_colors.dart';
 import 'package:mini_project/widgets/auth/auth_form_widgets.dart';
 import 'package:mini_project/widgets/home/time_adjust_box.dart';
@@ -8,12 +10,20 @@ typedef CreateActivitySubmit =
       String name,
       String description,
       int durationInSeconds,
+      String? categoryId,
     );
 
 class CreateActivityFormSheet extends StatefulWidget {
-  const CreateActivityFormSheet({super.key, required this.onSubmit});
+  const CreateActivityFormSheet({
+    super.key,
+    required this.onSubmit,
+    required this.fireStoreService,
+    required this.userId,
+  });
 
   final CreateActivitySubmit onSubmit;
+  final FireStoreService fireStoreService;
+  final String userId;
 
   @override
   State<CreateActivityFormSheet> createState() =>
@@ -27,6 +37,17 @@ class _CreateActivityFormSheetState extends State<CreateActivityFormSheet> {
   int _selectedHours = 0;
   int _selectedMinutes = 0;
   bool _isSaving = false;
+  String? _selectedCategoryId;
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _latestCategories = [];
+
+  static const List<int> _categoryColors = [
+    0xFFA3B18A,
+    0xFFD4A373,
+    0xFFCCD5AE,
+    0xFFB7B7A4,
+    0xFFE09F3E,
+    0xFFCB997E,
+  ];
 
   @override
   void dispose() {
@@ -53,6 +74,79 @@ class _CreateActivityFormSheetState extends State<CreateActivityFormSheet> {
     });
   }
 
+  Future<void> _confirmDeleteCategory(
+    String categoryId,
+    String categoryName,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Hapus Kategori?'),
+          content: Text(
+            'Kategori "$categoryName" akan dihapus. Aktivitas yang sudah ada tetap tersimpan.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) return;
+
+    await widget.fireStoreService.deleteCategory(categoryId);
+
+    if (!mounted) return;
+    if (_selectedCategoryId == categoryId) {
+      setState(() {
+        _selectedCategoryId = null;
+      });
+    }
+  }
+
+  Future<void> _showCreateCategoryDialog() async {
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return _CreateCategoryDialog(
+          fireStoreService: widget.fireStoreService,
+          userId: widget.userId,
+          categoryColors: _categoryColors,
+        );
+      },
+    );
+  }
+
+  Future<void> _showCategoryPicker() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) {
+        return _CategoryPickerSheet(
+          fireStoreService: widget.fireStoreService,
+          userId: widget.userId,
+          selectedCategoryId: _selectedCategoryId,
+          onSelect: (categoryId) {
+            setState(() {
+              _selectedCategoryId = categoryId;
+            });
+          },
+          onDelete: _confirmDeleteCategory,
+        );
+      },
+    );
+  }
+
   Future<void> _submit() async {
     if (_isSaving) return;
 
@@ -74,12 +168,25 @@ class _CreateActivityFormSheetState extends State<CreateActivityFormSheet> {
       return;
     }
 
+    if (_selectedCategoryId == null) {
+      if (_latestCategories.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pilih atau buat kategori terlebih dahulu.'),
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() {
       _isSaving = true;
     });
 
     try {
-      await widget.onSubmit(name, description, durationInSeconds);
+      final categoryId = _selectedCategoryId ?? _latestCategories.first.id;
+
+      await widget.onSubmit(name, description, durationInSeconds, categoryId);
 
       if (!mounted) return;
 
@@ -166,6 +273,94 @@ class _CreateActivityFormSheetState extends State<CreateActivityFormSheet> {
                 ),
               ),
               const SizedBox(height: 14),
+              const Text(
+                'Kategori',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: ZenColors.text,
+                ),
+              ),
+              const SizedBox(height: 8),
+              StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+                stream: widget.fireStoreService.streamCategoriesForUser(
+                  widget.userId,
+                ),
+                builder: (context, snapshot) {
+                  final categories = snapshot.data ?? [];
+                  _latestCategories = categories;
+                  final hasSelected =
+                      _selectedCategoryId != null &&
+                      categories.any((doc) => doc.id == _selectedCategoryId);
+                  final effectiveSelectedId = hasSelected
+                      ? _selectedCategoryId
+                      : (categories.isNotEmpty ? categories.first.id : null);
+                  final selectedDoc = categories.isEmpty
+                      ? null
+                      : categories.firstWhere(
+                          (doc) => doc.id == effectiveSelectedId,
+                          orElse: () => categories.first,
+                        );
+                  final selectedName = selectedDoc == null
+                      ? 'Belum ada kategori'
+                      : (selectedDoc.data()['name'] ?? '').toString();
+                  final selectedColor = selectedDoc == null
+                      ? ZenColors.accent.value
+                      : (selectedDoc.data()['colorValue'] ??
+                                ZenColors.accent.value)
+                            as int;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      InkWell(
+                        onTap: categories.isEmpty ? null : _showCategoryPicker,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InputDecorator(
+                          decoration: zenInputDecoration(
+                            label: 'Pilih Kategori',
+                            icon: Icons.category_rounded,
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 6,
+                                backgroundColor: Color(selectedColor),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  selectedName,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: categories.isEmpty
+                                        ? ZenColors.text.withValues(alpha: 0.6)
+                                        : ZenColors.text,
+                                  ),
+                                ),
+                              ),
+                              const Icon(
+                                Icons.expand_more_rounded,
+                                color: ZenColors.text,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: _showCreateCategoryDialog,
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('Tambah Kategori Baru'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: ZenColors.secondary,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
               Text(
                 'Durasi: ${_formatDuration(_selectedHours, _selectedMinutes)}',
                 style: const TextStyle(
@@ -225,6 +420,273 @@ class _CreateActivityFormSheetState extends State<CreateActivityFormSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _WeekdayOption {
+  const _WeekdayOption({required this.day, required this.label});
+
+  final int day;
+  final String label;
+}
+
+class _CategoryPickerSheet extends StatelessWidget {
+  const _CategoryPickerSheet({
+    required this.fireStoreService,
+    required this.userId,
+    required this.selectedCategoryId,
+    required this.onSelect,
+    required this.onDelete,
+  });
+
+  final FireStoreService fireStoreService;
+  final String userId;
+  final String? selectedCategoryId;
+  final ValueChanged<String> onSelect;
+  final Future<void> Function(String categoryId, String name) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+          stream: fireStoreService.streamCategoriesForUser(userId),
+          builder: (context, snapshot) {
+            final categories = snapshot.data ?? [];
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: ZenColors.accent,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Pilih Kategori',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: ZenColors.text,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (categories.isEmpty)
+                  Text(
+                    'Belum ada kategori.',
+                    style: TextStyle(
+                      color: ZenColors.text.withValues(alpha: 0.6),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: categories.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final doc = categories[index];
+                        final name = (doc.data()['name'] ?? '').toString();
+                        final colorValue =
+                            (doc.data()['colorValue'] ?? ZenColors.accent.value)
+                                as int;
+                        final isSelected = doc.id == selectedCategoryId;
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              onSelect(doc.id);
+                              Navigator.of(context).pop();
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? ZenColors.primary.withValues(alpha: 0.08)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: ZenColors.accent,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 6,
+                                    backgroundColor: Color(colorValue),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: ZenColors.text,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Hapus',
+                                    icon: const Icon(
+                                      Icons.close_rounded,
+                                      size: 18,
+                                      color: Color(0xFFB4533C),
+                                    ),
+                                    onPressed: () async {
+                                      await onDelete(doc.id, name);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateCategoryDialog extends StatefulWidget {
+  const _CreateCategoryDialog({
+    required this.fireStoreService,
+    required this.userId,
+    required this.categoryColors,
+  });
+
+  final FireStoreService fireStoreService;
+  final String userId;
+  final List<int> categoryColors;
+
+  @override
+  State<_CreateCategoryDialog> createState() => _CreateCategoryDialogState();
+}
+
+class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
+  final TextEditingController _nameController = TextEditingController();
+  int _selectedColor = 0xFFA3B18A;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.categoryColors.isNotEmpty) {
+      _selectedColor = widget.categoryColors.first;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_isSaving) return;
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.fireStoreService.addCategory(
+        name: name,
+        colorValue: _selectedColor,
+        userId: widget.userId,
+      );
+      if (!mounted) return;
+      FocusScope.of(context).unfocus();
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Tambah Kategori'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: zenInputDecoration(
+                label: 'Nama Kategori',
+                icon: Icons.category_rounded,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('Warna', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: widget.categoryColors.map((colorValue) {
+                final isSelected = _selectedColor == colorValue;
+                return ChoiceChip(
+                  selected: isSelected,
+                  onSelected: (_) {
+                    setState(() {
+                      _selectedColor = colorValue;
+                    });
+                  },
+                  label: const Text(''),
+                  avatar: CircleAvatar(
+                    backgroundColor: Color(colorValue),
+                    radius: 10,
+                  ),
+                  selectedColor: ZenColors.primary.withValues(alpha: 0.2),
+                  backgroundColor: ZenColors.background,
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        TextButton(
+          onPressed: _isSaving ? null : _save,
+          child: Text(_isSaving ? 'Menyimpan...' : 'Simpan'),
+        ),
+      ],
     );
   }
 }

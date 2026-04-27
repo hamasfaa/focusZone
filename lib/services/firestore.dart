@@ -6,6 +6,10 @@ class FireStoreService {
 
   final CollectionReference<Map<String, dynamic>> _activitiesCollection =
       FirebaseFirestore.instance.collection('activities');
+  final CollectionReference<Map<String, dynamic>> _categoriesCollection =
+      FirebaseFirestore.instance.collection('categories');
+  final CollectionReference<Map<String, dynamic>> _remindersCollection =
+      FirebaseFirestore.instance.collection('reminders');
 
   Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
   streamActivitiesForUser(String userId) {
@@ -70,12 +74,77 @@ class FireStoreService {
         .snapshots();
   }
 
-  Future<void> addActivity({
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  streamCategoriesForUser(String userId) {
+    return _categoriesCollection
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+          final docs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(
+            snapshot.docs,
+          );
+          docs.sort((a, b) {
+            final aCreatedAt = a.data()['createdAt'];
+            final bCreatedAt = b.data()['createdAt'];
+            if (aCreatedAt is Timestamp && bCreatedAt is Timestamp) {
+              return bCreatedAt.compareTo(aCreatedAt);
+            }
+            return 0;
+          });
+          return docs;
+        });
+  }
+
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  streamRemindersForUser(String userId) {
+    return _remindersCollection
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+          final docs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(
+            snapshot.docs,
+          );
+          docs.sort((a, b) {
+            final aCreatedAt = a.data()['createdAt'];
+            final bCreatedAt = b.data()['createdAt'];
+            if (aCreatedAt is Timestamp && bCreatedAt is Timestamp) {
+              return bCreatedAt.compareTo(aCreatedAt);
+            }
+            return 0;
+          });
+          return docs;
+        });
+  }
+
+  Future<String> addCategory({
+    required String name,
+    required int colorValue,
+    required String userId,
+  }) async {
+    try {
+      final doc = await _categoriesCollection.add({
+        'name': name,
+        'colorValue': colorValue,
+        'userId': userId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return doc.id;
+    } catch (e) {
+      throw Exception('Failed to add category: $e');
+    }
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    await _categoriesCollection.doc(categoryId).delete();
+  }
+
+  Future<String> addActivity({
     required String name,
     required String description,
     required int durationInSeconds,
     required String userId,
     String status = activityStatusCompleted,
+    String? categoryId,
   }) async {
     try {
       if (status == activityStatusRunning && await hasRunningActivity(userId)) {
@@ -84,18 +153,74 @@ class FireStoreService {
         );
       }
 
-      await _activitiesCollection.add({
+      final doc = await _activitiesCollection.add({
         'name': name,
         'description': description,
         'durationInSeconds': durationInSeconds,
         'durationInMinutes': (durationInSeconds / 60).ceil(),
         'status': status,
         'userId': userId,
+        if (categoryId != null) 'categoryId': categoryId,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      return doc.id;
     } catch (e) {
       throw Exception('Failed to add activity: $e');
     }
+  }
+
+  Future<String> addReminder({
+    required String title,
+    required String userId,
+    required int hour,
+    required int minute,
+    required List<int> weekdays,
+    required List<int> notificationIds,
+    bool isEnabled = true,
+  }) async {
+    try {
+      final doc = await _remindersCollection.add({
+        'title': title,
+        'userId': userId,
+        'hour': hour,
+        'minute': minute,
+        'weekdays': weekdays,
+        'notificationIds': notificationIds,
+        'isEnabled': isEnabled,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return doc.id;
+    } catch (e) {
+      throw Exception('Failed to add reminder: $e');
+    }
+  }
+
+  Future<void> updateReminder({
+    required String reminderId,
+    String? title,
+    int? hour,
+    int? minute,
+    List<int>? weekdays,
+    List<int>? notificationIds,
+    bool? isEnabled,
+  }) async {
+    final updateData = <String, dynamic>{};
+    if (title != null) updateData['title'] = title;
+    if (hour != null) updateData['hour'] = hour;
+    if (minute != null) updateData['minute'] = minute;
+    if (weekdays != null) updateData['weekdays'] = weekdays;
+    if (notificationIds != null) {
+      updateData['notificationIds'] = notificationIds;
+    }
+    if (isEnabled != null) updateData['isEnabled'] = isEnabled;
+
+    if (updateData.isEmpty) return;
+
+    await _remindersCollection.doc(reminderId).update(updateData);
+  }
+
+  Future<void> deleteReminder(String reminderId) async {
+    await _remindersCollection.doc(reminderId).delete();
   }
 
   Future<void> updateActivityStatus({

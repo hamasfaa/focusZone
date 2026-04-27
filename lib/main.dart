@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:mini_project/screens/home.dart';
 import 'package:mini_project/screens/login.dart';
+import 'package:mini_project/screens/reminders.dart';
 import 'package:mini_project/screens/register.dart';
 import 'package:mini_project/screens/timer.dart';
 import 'package:mini_project/theme/zen_colors.dart';
@@ -12,7 +13,7 @@ void main() async {
   await Firebase.initializeApp();
 
   AwesomeNotifications().initialize(
-    null,
+    'resource://mipmap/logo',
     [
       NotificationChannel(
         channelGroupKey: 'timer_channel_group',
@@ -21,13 +22,13 @@ void main() async {
         channelDescription: 'Notification channel for timer alerts',
         defaultColor: ZenColors.primary,
         ledColor: Colors.white,
-      )
+      ),
     ],
     channelGroups: [
       NotificationChannelGroup(
         channelGroupKey: 'timer_channel_group',
         channelGroupName: 'Timer group',
-      )
+      ),
     ],
     debug: true,
   );
@@ -81,6 +82,7 @@ class MyApp extends StatelessWidget {
         'register': (context) => const RegisterScreen(),
         'home': (context) => const HomeScreen(),
         'timer': (context) => const TimerScreen(),
+        'reminders': (context) => const RemindersScreen(),
       },
     );
   }

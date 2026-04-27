@@ -13,6 +13,8 @@ class ActivityDetailSheet extends StatelessWidget {
     required this.timeText,
     required this.noteText,
     required this.noteImageUrls,
+    this.categoryName,
+    this.categoryColorValue,
   });
 
   final String activityId;
@@ -22,6 +24,8 @@ class ActivityDetailSheet extends StatelessWidget {
   final String timeText;
   final String noteText;
   final List<String> noteImageUrls;
+  final String? categoryName;
+  final int? categoryColorValue;
 
   void _showFullScreenImage(BuildContext context, String imageUrl) {
     showDialog(
@@ -37,10 +41,7 @@ class ActivityDetailSheet extends StatelessWidget {
                 panEnabled: true,
                 minScale: 0.5,
                 maxScale: 4.0,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
-                ),
+                child: Image.network(imageUrl, fit: BoxFit.contain),
               ),
               Positioned(
                 top: 40,
@@ -51,7 +52,11 @@ class ActivityDetailSheet extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 24),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ),
@@ -69,7 +74,9 @@ class ActivityDetailSheet extends StatelessWidget {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Hapus Aktivitas?'),
-          content: const Text('Aktivitas ini beserta semua foto lampirannya akan dihapus permanen.'),
+          content: const Text(
+            'Aktivitas ini beserta semua foto lampirannya akan dihapus permanen.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
@@ -78,17 +85,19 @@ class ActivityDetailSheet extends StatelessWidget {
             TextButton(
               onPressed: () async {
                 Navigator.pop(dialogContext); // close dialog
-                
+
                 try {
                   if (noteImageUrls.isNotEmpty) {
                     await StorageService().deleteActivityImages(noteImageUrls);
                   }
                   await FireStoreService().deleteActivity(activityId);
-                  
+
                   if (context.mounted) {
                     Navigator.pop(context); // close sheet
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Aktivitas berhasil dihapus')),
+                      const SnackBar(
+                        content: Text('Aktivitas berhasil dihapus'),
+                      ),
                     );
                   }
                 } catch (e) {
@@ -134,7 +143,10 @@ class ActivityDetailSheet extends StatelessWidget {
               Expanded(
                 child: ListView(
                   controller: controller,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
                   children: [
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +162,10 @@ class ActivityDetailSheet extends StatelessWidget {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.redAccent,
+                          ),
                           onPressed: () => _confirmDelete(context),
                         ),
                       ],
@@ -188,6 +203,30 @@ class ActivityDetailSheet extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (categoryName != null && categoryName!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Color(
+                            categoryColorValue ?? ZenColors.accent.value,
+                          ).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          categoryName!,
+                          style: TextStyle(
+                            color: Color(
+                              categoryColorValue ?? ZenColors.primary.value,
+                            ),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                     if (description.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       Text(
@@ -256,42 +295,56 @@ class ActivityDetailSheet extends StatelessWidget {
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           return GestureDetector(
-                            onTap: () => _showFullScreenImage(context, noteImageUrls[index]),
+                            onTap: () => _showFullScreenImage(
+                              context,
+                              noteImageUrls[index],
+                            ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
                               child: Image.network(
                                 noteImageUrls[index],
                                 fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Container(
-                                  height: 200,
-                                  color: ZenColors.accent.withValues(alpha: 0.3),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      color: ZenColors.primary,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        height: 200,
+                                        color: ZenColors.accent.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        child: const Center(
+                                          child: CircularProgressIndicator(
+                                            color: ZenColors.primary,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 200,
+                                    color: ZenColors.accent,
+                                    child: const Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.broken_image,
+                                          size: 40,
+                                          color: Colors.grey,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Gagal memuat gambar',
+                                          style: TextStyle(color: Colors.grey),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  height: 200,
-                                  color: ZenColors.accent,
-                                  child: const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                                      SizedBox(height: 8),
-                                      Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey)),
-                                    ],
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
                       ),
                     ],
                     const SizedBox(height: 40),

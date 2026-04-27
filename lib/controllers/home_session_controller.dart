@@ -70,6 +70,7 @@ class HomeSessionController extends ChangeNotifier {
     required String name,
     required String description,
     required int durationInSeconds,
+    String? categoryId,
   }) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -82,6 +83,7 @@ class HomeSessionController extends ChangeNotifier {
       durationInSeconds: durationInSeconds,
       userId: currentUser.uid,
       status: FireStoreService.activityStatusRunning,
+      categoryId: categoryId,
     );
   }
 

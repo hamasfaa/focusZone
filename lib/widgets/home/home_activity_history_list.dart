@@ -18,39 +18,58 @@ class HomeActivityHistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-      stream: fireStoreService.streamActivitiesForUser(userId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: ZenColors.primary),
-          );
-        }
+      stream: fireStoreService.streamCategoriesForUser(userId),
+      builder: (context, categorySnapshot) {
+        final categoryDocs =
+            categorySnapshot.data ??
+            <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+        final categoryMap = {
+          for (final doc in categoryDocs)
+            doc.id: {
+              'name': (doc.data()['name'] ?? '').toString(),
+              'colorValue':
+                  (doc.data()['colorValue'] ?? ZenColors.accent.value) as int,
+            },
+        };
 
-        if (snapshot.hasError) {
-          return _HistoryErrorCard(message: snapshot.error.toString());
-        }
+        return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+          stream: fireStoreService.streamActivitiesForUser(userId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(color: ZenColors.primary),
+              );
+            }
 
-        final docs =
-            (snapshot.data ?? <QueryDocumentSnapshot<Map<String, dynamic>>>[])
-                .where(
-                  (doc) =>
-                      (doc.data()['status'] ?? '') ==
-                      FireStoreService.activityStatusCompleted,
-                )
-                .toList();
+            if (snapshot.hasError) {
+              return _HistoryErrorCard(message: snapshot.error.toString());
+            }
 
-        if (docs.isEmpty) {
-          return const HomeHistoryPlaceholderCard();
-        }
+            final docs =
+                (snapshot.data ??
+                        <QueryDocumentSnapshot<Map<String, dynamic>>>[])
+                    .where(
+                      (doc) =>
+                          (doc.data()['status'] ?? '') ==
+                          FireStoreService.activityStatusCompleted,
+                    )
+                    .toList();
 
-        return ListView.separated(
-          itemCount: docs.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            return _HistoryActivityCard(
-              activityId: doc.id,
-              data: doc.data(),
+            if (docs.isEmpty) {
+              return const HomeHistoryPlaceholderCard();
+            }
+
+            return ListView.separated(
+              itemCount: docs.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final doc = docs[index];
+                return _HistoryActivityCard(
+                  activityId: doc.id,
+                  data: doc.data(),
+                  categoryMap: categoryMap,
+                );
+              },
             );
           },
         );
@@ -63,10 +82,12 @@ class _HistoryActivityCard extends StatelessWidget {
   const _HistoryActivityCard({
     required this.activityId,
     required this.data,
+    required this.categoryMap,
   });
 
   final String activityId;
   final Map<String, dynamic> data;
+  final Map<String, Map<String, dynamic>> categoryMap;
 
   String _formatDuration(int seconds) {
     final hours = seconds ~/ 3600;
@@ -126,6 +147,8 @@ class _HistoryActivityCard extends StatelessWidget {
     String timeText,
     String noteText,
     List<String> noteImageUrls,
+    String? categoryName,
+    int? categoryColorValue,
   ) {
     showModalBottomSheet(
       context: context,
@@ -139,6 +162,8 @@ class _HistoryActivityCard extends StatelessWidget {
         timeText: timeText,
         noteText: noteText,
         noteImageUrls: noteImageUrls,
+        categoryName: categoryName,
+        categoryColorValue: categoryColorValue,
       ),
     );
   }
@@ -149,10 +174,17 @@ class _HistoryActivityCard extends StatelessWidget {
     final description = (data['description'] ?? '').toString();
     final durationText = _formatDuration(_resolveDurationInSeconds(data));
     final timeText = _formatTime(data);
-    
+
     final noteText = (data['noteText'] ?? '').toString();
-    final List<String> noteImageUrls = List<String>.from(data['noteImageUrls'] ?? []);
+    final List<String> noteImageUrls = List<String>.from(
+      data['noteImageUrls'] ?? [],
+    );
     final hasNoteOrImage = noteText.isNotEmpty || noteImageUrls.isNotEmpty;
+
+    final categoryId = data['categoryId'];
+    final categoryData = categoryId is String ? categoryMap[categoryId] : null;
+    final categoryName = categoryData?['name'] as String?;
+    final categoryColorValue = categoryData?['colorValue'] as int?;
 
     return Material(
       color: Colors.transparent,
@@ -166,6 +198,8 @@ class _HistoryActivityCard extends StatelessWidget {
           timeText,
           noteText,
           noteImageUrls,
+          categoryName,
+          categoryColorValue,
         ),
         borderRadius: BorderRadius.circular(18),
         child: Container(
@@ -199,14 +233,19 @@ class _HistoryActivityCard extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        noteImageUrls.isNotEmpty ? Icons.image_rounded : Icons.notes_rounded,
+                        noteImageUrls.isNotEmpty
+                            ? Icons.image_rounded
+                            : Icons.notes_rounded,
                         size: 14,
                         color: ZenColors.secondary,
                       ),
                     ),
                   ],
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: ZenColors.primary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(100),
@@ -226,9 +265,36 @@ class _HistoryActivityCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   description,
-                  style: TextStyle(color: ZenColors.text.withValues(alpha: 0.75)),
+                  style: TextStyle(
+                    color: ZenColors.text.withValues(alpha: 0.75),
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              if (categoryName != null && categoryName.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Color(
+                      categoryColorValue ?? ZenColors.accent.value,
+                    ).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    categoryName,
+                    style: TextStyle(
+                      color: Color(
+                        categoryColorValue ?? ZenColors.primary.value,
+                      ),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
               const SizedBox(height: 10),

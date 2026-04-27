@@ -87,21 +87,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     String name,
     String description,
     int durationInSeconds,
+    String? categoryId,
   ) async {
     await _homeController.saveRunningActivity(
       name: name,
       description: description,
       durationInSeconds: durationInSeconds,
+      categoryId: categoryId,
     );
   }
 
   Future<void> _showCreateActivityForm() async {
+    final currentUserId = _homeController.currentUserId;
+    if (currentUserId == null) {
+      return;
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
-        return CreateActivityFormSheet(onSubmit: _saveActivity);
+        return CreateActivityFormSheet(
+          onSubmit: _saveActivity,
+          fireStoreService: _homeController.fireStoreService,
+          userId: currentUserId,
+        );
       },
     );
 
@@ -128,6 +139,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       appBar: AppBar(
         title: Image.asset('images/logo.png', height: 40, fit: BoxFit.contain),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.pushNamed(context, 'reminders'),
+            icon: const Icon(Icons.alarm_rounded),
+            tooltip: 'Reminder',
+          ),
           IconButton(
             onPressed: _logout,
             icon: const Icon(Icons.logout_rounded),
