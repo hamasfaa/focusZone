@@ -10,6 +10,8 @@ class FireStoreService {
       FirebaseFirestore.instance.collection('categories');
   final CollectionReference<Map<String, dynamic>> _remindersCollection =
       FirebaseFirestore.instance.collection('reminders');
+  final CollectionReference<Map<String, dynamic>> _usersCollection =
+      FirebaseFirestore.instance.collection('users');
 
   Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
   streamActivitiesForUser(String userId) {
@@ -114,6 +116,22 @@ class FireStoreService {
           });
           return docs;
         });
+  }
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> streamUserProfile(
+    String userId,
+  ) {
+    return _usersCollection.doc(userId).snapshots();
+  }
+
+  Future<void> upsertDailyTarget({
+    required String userId,
+    required int dailyTargetMinutes,
+  }) async {
+    await _usersCollection.doc(userId).set({
+      'dailyTargetMinutes': dailyTargetMinutes,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<String> addCategory({

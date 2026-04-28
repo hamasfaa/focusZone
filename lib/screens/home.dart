@@ -3,6 +3,7 @@ import 'package:mini_project/controllers/home_session_controller.dart';
 import 'package:mini_project/services/firestore.dart';
 import 'package:mini_project/theme/zen_colors.dart';
 import 'package:mini_project/widgets/home/create_activity_form_sheet.dart';
+import 'package:mini_project/widgets/home/daily_target_card.dart';
 import 'package:mini_project/widgets/home/home_activity_history_list.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -53,6 +54,107 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _onHomeControllerChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  Widget _buildDailyTargetLoadingCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ZenColors.accent, width: 1.1),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(color: ZenColors.primary),
+      ),
+    );
+  }
+
+  Future<void> _showDailyTargetDialog({
+    required int currentTargetMinutes,
+  }) async {
+    final controller = TextEditingController(
+      text: currentTargetMinutes > 0 ? currentTargetMinutes.toString() : '',
+    );
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Atur Target Harian'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Menit per hari',
+              hintText: 'Contoh: 60',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () {
+                final value = int.tryParse(controller.text.trim());
+                if (value == null || value <= 0 || value > 1440) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Masukkan target 1 - 1440 menit.'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, value);
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    final currentUserId = _homeController.currentUserId;
+    if (currentUserId == null) return;
+
+    await _homeController.fireStoreService.upsertDailyTarget(
+      userId: currentUserId,
+      dailyTargetMinutes: result,
+    );
+  }
+
+  Widget _buildDailyTargetSection(String userId) {
+    return StreamBuilder(
+      stream: _homeController.fireStoreService.streamUserProfile(userId),
+      builder: (context, userSnapshot) {
+        final data = userSnapshot.data?.data() ?? {};
+        final targetMinutes = (data['dailyTargetMinutes'] ?? 0) as int;
+
+        return StreamBuilder(
+          stream: _homeController.fireStoreService.streamActivitiesForUser(
+            userId,
+          ),
+          builder: (context, activitySnapshot) {
+            if (activitySnapshot.connectionState == ConnectionState.waiting &&
+                !activitySnapshot.hasData) {
+              return _buildDailyTargetLoadingCard();
+            }
+
+            final activities = activitySnapshot.data ?? [];
+
+            return DailyTargetCard(
+              activities: activities,
+              targetMinutes: targetMinutes,
+              onEditTarget: () =>
+                  _showDailyTargetDialog(currentTargetMinutes: targetMinutes),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -165,6 +267,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _buildDailyTargetSection(currentUserId),
+                const SizedBox(height: 18),
                 const Text(
                   'Riwayat Aktivitas',
                   style: TextStyle(
